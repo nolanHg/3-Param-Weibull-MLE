@@ -8,7 +8,7 @@
 # brief:	Calculates the maximum likelihood estimates       #
 #		for the parameters of a three-parameter           #
 #		Weibull distribution using the method described   #
-#		in Panchang and Gupta (1989).			  #
+#		in Panchang and Gupta (1989) [henceforth P&G].	  #
 #								  #
 ###################################################################
 
@@ -16,13 +16,13 @@
 ###################################################################
 #			   IMPORTS		                  #
 ###################################################################
-library(FAdist) # Provides access to the rweibull3() function
+library(FAdist) # Provides access to the rweibull3() function.
 
 
 ###################################################################
 #			   R OPTIONS				  #
 ###################################################################
-options(digits = 5) # Display numbers with 5 digits
+options(digits = 5) # Display numbers with 5 digits.
 
 
 ###################################################################
@@ -37,13 +37,13 @@ options(digits = 5) # Display numbers with 5 digits
 ##
 get_next_w <- function(y, prev_w) 
 {
-	
+	## Sums used in Newton-Raphson method.	
 	S1 <- sum(log(y)) 
 	S2 <- sum(y ^ prev_w) 
 	S3 <- sum((y ^ prev_w) * log(y)) 
 	S4 <- sum(((log(y))^2) * (y^prev_w)) 
 	
-	## Next Newton-Raphson estimate; found using equation 2.1 in Panchang and Gupta (1989)
+	## Next Newton-Raphson estimate; found using equation 2.1 in P&G.
 	## For reference:  Next Newton-Raphson estimate is x_(n+1) = x_n - f(x_n) / f'(x_n).
 	next_w <- prev_w + ((1 / prev_w) + (S1 / length(y)) - (S3 / S2)) / ((1 / (prev_w^2)) + S4 / S2 - (S3 / S2)^2)
 	return(next_w)	
@@ -51,7 +51,7 @@ get_next_w <- function(y, prev_w)
 
 ##
 ## brief: Compute the maximized log-likelihood function using u_i, v_i, w_i,
-##	   found using the method described in Panchang and Gupta (1989).
+##	   found using the method described in P&G.
 ## param v: Scale parameter.
 ## param w: Shape parameter.
 ## param y: Modified Weibull sample x_j - u_i
@@ -76,14 +76,105 @@ max_log_likelihood_alt <- function(v, n)
 	return(L)
 }
 
-## Small positive number used to prevent
-## the argument of the log function in Equation
-## 1.3 from Panchang and Gupta (1989) from 
-## being zero.
-epsilon <- 10e-6
+##
+## brief: Compute MLEs for the parameters of a three-parameter Weibull distribution 
+##	  using the method in P&G.
+## param data: Sample from Weibull distribution. 
+## param epsilon: Small number to prevent argument of logarithm
+##	          in equation 1.3 (from P&G) from being 0.
+## param u_divs: Number regions to divide u-space into.
+## param NR_iters: Number of iterations to use in Newton-Raphson.
+##
+get_weibull_mles <- function(data, epsilon, u_divs, NR_iters) 
+{
+	## Sample size.
+	N <- length(data)
 
-## Generate a random sample of size N from Weibull(u = 50, v = 3, w = 2)
-## x_j sample
+	## Get the minimum value from the sample (x_min in the paper).
+	data_min <- min(data)
+
+	## Generate divided u-space
+	u_space <- seq(0, data_min - epsilon, len = u_divs)
+	
+	## Compute estimate for w_1 (when u_i = 0).
+	S <- sum(log(data))
+	w_estimate <- N / (N * log(max(data)) - S)
+	
+	## Allocate memory space for v-parameter and w-parameter vectors.
+	v_vect <- rep(NA, length(u_space))
+	w_vect <- rep(NA, length(u_space))
+	
+	## Number of iterations to perform in Newton-Raphson.	
+	iters <- NR_iters
+	
+	## Build the v-parameter and w-parameter vectors.
+	for (i in 1 : length(u_space)) {
+		
+		## Initial Newton-Raphson estimate for w_i (when i != 1).
+		if (i != 1) {	
+			w_estimate_prev <- w_estimate
+			w_estimate <- w_estimate - (w_estimate_prev - w_estimate)
+		}
+	
+		## Compute modified Weibull sample.
+		y <- data - u_space[i]
+		
+		## Calculate final Newton-Raphson estimate for shape parameter w_i.
+		for (j in 1 : iters) { w_estimate <- get_next_w(y, w_estimate) }
+		
+		## Populate v-parameter and w-parameter vectors.	
+		if (i == length(u_space)) {
+			## When u_space[i] == data_min, w_i and v_i
+			## are given by equation 2.3 from P&G.
+			v_vect[i] <- (1 / N) * sum(data - data_min)
+			w_vect[i] <- 1
+		} else {
+			## w_i is given by the Newton-Raphson estimate above.
+			w_vect[i] <- w_estimate
+			
+			## v_i is calculated using w_i and u_space[i] in equation
+			## 1.4d from P&G.	
+			v_vect[i] <- (1 / N) * sum(y ^ w_estimate)
+		}
+	}
+	
+	## Allocate memory space for maximized log-likelihood vector (L).
+	L <- rep(NA, length(u_space)) 
+
+	## Build the L-vector.
+	for (i in 1 : length(u_space)) {
+
+		y <- data - u_space[i]
+		v <- v_vect[i] 
+		w <- w_vect[i] 
+		
+		## Use equation 2.3 from P&G when u_space[i] = data_min.	
+		if (i == length(u_space)) { L[i] <- max_log_likelihood_alt(v, N) }
+		
+		## Otherwise, use equation 2.2 from P&G.
+		else { L[i] <- max_log_likelihood(v, w, y) }
+	}
+
+	## Find the index of the largest value in the maximized log-likelihood vector.
+	index_of_max <- which(L == max(L))
+	
+	## Get the MLEs for u, v, and w.	
+	u_mle <- u_space[index_of_max]
+	v_mle <- v_vect[index_of_max]
+	w_mle <- w_vect[index_of_max]
+	mles <- c(u_mle, v_mle, w_mle)
+	
+	ret_vect <- vector(mode = "list", 2)	
+	
+	ret_vect[[1]] <- mles
+	ret_vect[[2]] <- c(u_space, L)
+
+	## Return the MLEs and (u_space, L) in a list of vectors.
+	return(ret_vect)
+}
+
+#plot_mllf <- function(data
+
 w_param <- 1.5 
 v_param <- 1 
 u_param <- 10	
@@ -91,80 +182,11 @@ sample_size <- 100
 sample_name <- paste("Random Sample with N = ", sample_size, " from Weibull(u = ", u_param, ", v = ", v_param, ", w = ", w_param, ")", sep = "")
 w3samp <- rweibull3(sample_size, shape = w_param, scale = v_param, thres = u_param)
 
-## Sample from Adatia and Chan (1985)
-#sample_name <- "Adatia and Chan (1985)"
-#w3samp <- c(10.0805, 10.0990, 10.2757, 10.6545, 10.6883, 11.0666, 11.2083, 11.2558, 11.8761, 12.2103)
+W <- get_weibull_mles(w3samp, 10e-6, 500, 5)
+MLEs <- W[[1]]
+u_and_L <- W[[2]]
+print(MLEs)
 
-## Sample from Rockette et al. (1974)
-#sample_name <- "Rockette et al. (1974)"
-#w3samp <- c(3.1, 4.6, 5.6, 6.8)
-
-## Sample from Petruaskas and Aagaard (1971)
-#sample_name <- "Petruaskas and Aagaard (1972)"
-#w3samp <- c(35, 34.7, 30.9, 29.0, 28.1, 24.9, 24, 23.9, 23.3, 22.6, 22.4, 19.8, 19.8, 19.4, 19, 17.6, 16.5, 15.9, 13.3, 12.3, 12, 12)
-
-## Sample from Smith and Naylor (1987)
-#sample_name <- "Smith and Naylor (1987)"
-#w3samp <- c(0.55, 0.74, 0.77, 0.81, 0.84, 0.93, 1.04, 1.11, 1.13, 1.24, 1.25, 1.27, 1.28, 1.29, 1.30, 1.36, 1.39, 1.42, 1.48, 1.48, 1.49, 1.49, 1.50, 1.50, 1.51, 1.52, 1.53, 1.54, 1.55, 1.55, 1.59, 1.59, 1.60, 1.61, 1.61, 1.61, 1.61, 1.62, 1.62, 1.63, 1.64, 1.66, 1.66, 1.66, 1.67, 1.68, 1.68, 1.69, 1.70, 1.70, 1.73, 1.76, 1.76, 1.77, 1.78, 1.81, 1.82, 1.84, 1.84, 1.89, 2.00, 2.01, 2.24)
-
-N <- length(w3samp)
-
-## Get the minimum value from the sample (x_min in the paper)
-w3samp_min <- min(w3samp)
-
-## Generate divided u-space
-u_space <- seq(0, w3samp_min - epsilon, len = 100)
-
-iters <- 10
-sum <- 0
-for (i in 1 : N) {
-	sum <- sum + log(w3samp[i])
-}
-w_estimate <- N / (N * log(max(w3samp)) - sum)
-
-v_vect <- rep(NA, length(u_space))
-w_vect <- rep(NA, length(u_space))
-
-for (i in 1 : length(u_space)) {
-	
-	if (i != 1) {	
-		w_estimate_prev <- w_estimate
-		w_estimate <- w_estimate - (w_estimate_prev - w_estimate)
-	}
-
-	y <- w3samp - u_space[i]
-
-	for (j in 1 : iters) {	
-		w_estimate <- get_next_w(y, w_estimate)
-	}
-	
-	
-	if (i == length(u_space)) {
- 		v_vect[i] <- (1 / N) * sum(w3samp - min(w3samp))
-		w_vect[i] <- 1
-	} else {
-		w_vect[i] <- w_estimate
-		v_vect[i] <- (1 / N) * sum(y ^ w_estimate)
-	}
-}
-
-L <- rep(NA, length(u_space)) 
-for (i in 1 : length(u_space)) {
-
-	y <- w3samp - u_space[i]
-	v <- v_vect[i] 
-	w <- w_vect[i] 
-	
-	if (i == length(u_space)) {
-		L[i] <- max_log_likelihood_alt(v, N)
-	} else {
-		L[i] <- max_log_likelihood(v, w, y)
-	}
-}
-
-index_of_max <- which(L == max(L))
-paste("u =", u_space[index_of_max], "v =", v_vect[index_of_max], "w =", w_vect[index_of_max], sep = " ")
-
-jpeg(file = paste(gsub(" ", "_", sample_name), ".jpeg", sep =""))
-plot(u_space, L, main = sample_name, xlim = c(min(u_space), max(u_space)), ylim = c(min(L), max(L)), type = "l", sub =  paste("u = ", u_space[index_of_max], ", v = ", v_vect[index_of_max], ", w = ", w_vect[index_of_max], sep = ""))
-dev.off()
+#jpeg(file = paste(gsub(" ", "_", sample_name), ".jpeg", sep =""))
+#plot(u_space, L, main = sample_name, xlim = c(min(u_space), max(u_space)), ylim = c(min(L), max(L)), type = "l", sub =  paste("u = ", u_space[index_of_max], ", v = ", v_vect[index_of_max], ", w = ", w_vect[index_of_max], sep = ""))
+#dev.off()
