@@ -18,7 +18,6 @@
 ###################################################################
 library(FAdist) # Provides access to the rweibull3() function.
 
-
 ###################################################################
 #			   R OPTIONS				  #
 ###################################################################
@@ -179,10 +178,10 @@ get_weibull_mles <- function(data, epsilon, u_divs, NR_iters)
 	return(ret_vect)
 }
 
-plot_mllf_2d <- function(u, L, title, subtitle) 
+plot_mllf_2d <- function(u, L, title, subtitle, x_lims, y_lims)
 {
-	jpeg(file = paste(gsub(" ", "_", title), ".jpeg", sep = ""))
-	plot(u, L, main = title, sub = subtitle, xlim = c(min(u), max(u)), ylim = c(min(L), max(L)), type = "l")
+	jpeg(file = paste("./weibull_plots/", gsub(" ", "_", title), ".jpeg", sep = ""))
+	plot(u, L, main = title, sub = subtitle, xlim = x_lims, ylim = y_lims, type = "l", lwd = 2)
 	dev.off()	
 }
 
@@ -193,18 +192,39 @@ plot_mllf_2d <- function(u, L, title, subtitle)
 #sample_name <- paste("Random Sample with N = ", sample_size, " from Weibull(u = ", u_param, ", v = ", v_param, ", w = ", w_param, ")", sep = "")
 #w3samp <- rweibull3(sample_size, shape = w_param, scale = v_param, thres = u_param)
 
-w3samp <- as.numeric(scan(file = "./weibull_data/Rockette.csv", what = character(), sep = ","))
+###################################################################
+#			   VISUALIZATION	                  #
+###################################################################
+data_files <- list.files(paste(getwd(), "/weibull_data", sep = ""))
+	
+for (file in data_files) {
 
-## Calculate MLEs, u-space, v-space, w-space, and L.
-calcd_weib_prods <- get_weibull_mles(w3samp, 10e-6, 100, 5)
+	w3samp <- as.numeric(scan(file = paste(getwd(), "/weibull_data/", file, sep = ""), what = character(), sep = ","))
 
-## Extract calculated products from calcd_weib_prods.
-MLEs <- calcd_weib_prods[[1]]
-u <- calcd_weib_prods[[2]]
-v <- calcd_weib_prods[[3]]
-w <- calcd_weib_prods[[4]]
-L <- calcd_weib_prods[[5]]
+	## Calculate MLEs, u-space, v-space, w-space, and L.
+	calcd_weib_prods <- get_weibull_mles(w3samp, 10e-6, 100, 5)
 
-plot_mllf_2d(u, L, "Rockette et al. data", paste("u = ", MLEs[1], ", v = ", MLEs[2], ", w = ", MLEs[3], sep = ""))
-
-print(MLEs)
+	## Extract calculated products from calcd_weib_prods.
+	MLEs <- calcd_weib_prods[[1]]
+	u <- calcd_weib_prods[[2]]
+	v <- calcd_weib_prods[[3]]
+	w <- calcd_weib_prods[[4]]
+	L <- calcd_weib_prods[[5]]
+	
+	if (file == "Rockette.csv") {
+		x_lims <- c(0, 3)
+		y_lims <- c(-6.84, -6.79)
+	} else if (file == "PA.csv") {
+		x_lims <- c(0, 12)
+		y_lims <- c(-73.5, -71.5)
+	} else if (file == "AC.csv") {
+		x_lims <- c(0, 10)
+		y_lims <- c(-12, -8)
+	} else {
+		x_lims <- c(0, 0.6)
+		y_lims <- c(-24, -14)
+	}
+	plot_mllf_2d(u, L, gsub(".csv", " Data", file), 
+		     paste("u = ", MLEs[1], ", v = ", MLEs[2], ", w = ", MLEs[3], sep = ""), 
+		     x_lims, y_lims)
+}
