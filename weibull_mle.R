@@ -23,10 +23,8 @@ max_log_likelihood <- function(v, w, y)
 	return(L)
 }	
 
-max_log_likelihood_alt <- function(x, n)
+max_log_likelihood_alt <- function(v, n)
 {
-	v <- (1 / n) * sum(x - min(x))
-
 	L <- n * (-log(v) - 1)
 
 	return(L)
@@ -36,23 +34,28 @@ max_log_likelihood_alt <- function(x, n)
 ## the argument of the log function in Equation
 ## 1.3 from Panchang and Gupta (1989) from 
 ## being zero.
-epsilon <- 10^-3
+epsilon <- 10e-6
 
 ## Generate a random sample of size N from Weibull(u = 50, v = 3, w = 2)
 ## x_j sample
-#w3samp <- rweibull3(N, shape = 2.3, scale = 3, thres = 2.8)
+w_param <- 2.3
+v_param <- 3
+u_param <- 2.8	
+sample_size <- 40
+#sample_name <- paste("Random Sample with N = ", sample_size, " from Weibull(u = ", u_param, ", v = ", v_param, ", w = ", w_param, ")", sep = "")
+#w3samp <- rweibull3(sample_size, shape = w_param, scale = v_param, thres = u_param)
 
 ## Sample from Adatia and Chan (1985)
 #sample_name <- "Adatia and Chan (1985)"
 #w3samp <- c(10.0805, 10.0990, 10.2757, 10.6545, 10.6883, 11.0666, 11.2083, 11.2558, 11.8761, 12.2103)
 
 ## Sample from Rockette et al. (1974)
-#sample_name <- "Rockette et al. (1974)"
-#w3samp <- c(3.1, 4.6, 5.6, 6.8)
+sample_name <- "Rockette et al. (1974)"
+w3samp <- c(3.1, 4.6, 5.6, 6.8)
 
 ## Sample from Petruaskas and Aagaard (1971)
-sample_name <- "Petruaskas and Aagaard (1972)"
-w3samp <- c(35, 34.7, 30.9, 29.0, 28.1, 24.9, 24, 23.9, 23.3, 22.6, 22.4, 19.8, 19.8, 19.4, 19, 17.6, 16.5, 15.9, 13.3, 12.3, 12, 12)
+#sample_name <- "Petruaskas and Aagaard (1972)"
+#w3samp <- c(35, 34.7, 30.9, 29.0, 28.1, 24.9, 24, 23.9, 23.3, 22.6, 22.4, 19.8, 19.8, 19.4, 19, 17.6, 16.5, 15.9, 13.3, 12.3, 12, 12)
 
 ## Sample from Smith and Naylor (1987)
 #sample_name <- "Smith and Naylor (1987)"
@@ -64,9 +67,9 @@ N <- length(w3samp)
 w3samp_min <- min(w3samp)
 
 ## Generate divided u-space
-u_space <- seq(0, w3samp_min - epsilon, len = 1000)
+u_space <- seq(0, w3samp_min - epsilon, len = 100)
 
-iters <- 4 
+iters <- 10
 sum <- 0
 for (i in 1 : N) {
 	sum <- sum + log(w3samp[i])
@@ -88,9 +91,15 @@ for (i in 1 : length(u_space)) {
 	for (j in 1 : iters) {	
 		w_estimate <- get_next_w(y, w_estimate)
 	}
-
-	w_vect[i] <- w_estimate
-	v_vect[i] <- (1 / N) * sum(y ^ w_estimate)
+	
+	
+	if (i == length(u_space)) {
+ 		v_vect[i] <- (1 / N) * sum(w3samp - min(w3samp))
+		w_vect[i] <- 1
+	} else {
+		w_vect[i] <- w_estimate
+		v_vect[i] <- (1 / N) * sum(y ^ w_estimate)
+	}
 }
 
 L <- rep(NA, length(u_space)) 
@@ -101,7 +110,7 @@ for (i in 1 : length(u_space)) {
 	w <- w_vect[i] 
 	
 	if (i == length(u_space)) {
-		L[i] <- max_log_likelihood_alt(w3samp, N)
+		L[i] <- max_log_likelihood_alt(v, N)
 	} else {
 		L[i] <- max_log_likelihood(v, w, y)
 	}
@@ -111,5 +120,5 @@ index_of_max <- which(L == max(L))
 paste("u =", u_space[index_of_max], "v =", v_vect[index_of_max], "w =", w_vect[index_of_max], sep = " ")
 
 jpeg(file = paste(gsub(" ", "_", sample_name), ".jpeg", sep =""))
-plot(u_space, L, main = sample_name, xlim = c(min(u_space) - 1, max(u_space) + 1), ylim = c(min(L) - 1, max(L) + 1), type = "l", sub =  paste("u = ", u_space[index_of_max], ", v = ", v_vect[index_of_max], ", w = ", w_vect[index_of_max], sept = ""))
+plot(u_space, L, main = sample_name, xlim = c(min(u_space), max(u_space)), ylim = c(min(L), max(L)), type = "l", sub =  paste("u = ", u_space[index_of_max], ", v = ", v_vect[index_of_max], ", w = ", w_vect[index_of_max], sept = ""))
 dev.off()
