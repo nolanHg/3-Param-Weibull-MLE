@@ -69,6 +69,7 @@ max_log_likelihood <- function(v, w, y)
 ##	  v_i = (1 / N) * SUMMATION(x_j - x_min), w_i = 1.
 ## param v: Scale parameter with value equal to v_i, mentioned in the brief.
 ## param n: Sample size.
+## returns: L(u_i = x_min, v_i = (1 / N) * SUMMATION(x_j - x_min), w_i = 1).
 ##
 max_log_likelihood_alt <- function(v, n)
 {
@@ -84,6 +85,8 @@ max_log_likelihood_alt <- function(v, n)
 ##	          in equation 1.3 (from P&G) from being 0.
 ## param u_divs: Number regions to divide u-space into.
 ## param NR_iters: Number of iterations to use in Newton-Raphson.
+## returns: A list containing MLEs, u-space vector, L-vector, v-parameter vector,
+##	    and w-parameter vector.
 ##
 get_weibull_mles <- function(data, epsilon, u_divs, NR_iters) 
 {
@@ -164,29 +167,44 @@ get_weibull_mles <- function(data, epsilon, u_divs, NR_iters)
 	w_mle <- w_vect[index_of_max]
 	mles <- c(u_mle, v_mle, w_mle)
 	
-	ret_vect <- vector(mode = "list", 2)	
+	ret_vect <- vector(mode = "list", 5)	
 	
 	ret_vect[[1]] <- mles
-	ret_vect[[2]] <- c(u_space, L)
+	ret_vect[[2]] <- u_space
+	ret_vect[[3]] <- v_vect
+	ret_vect[[4]] <- w_vect
+	ret_vect[[5]] <- L
 
-	## Return the MLEs and (u_space, L) in a list of vectors.
+	## Return the MLEs, u_space, v_vect, w_vect, and L in a list of vectors.
 	return(ret_vect)
 }
 
-#plot_mllf <- function(data
+plot_mllf_2d <- function(u, L, title, subtitle) 
+{
+	jpeg(file = paste(gsub(" ", "_", title), ".jpeg", sep = ""))
+	plot(u, L, main = title, sub = subtitle, xlim = c(min(u), max(u)), ylim = c(min(L), max(L)), type = "l")
+	dev.off()	
+}
 
-w_param <- 1.5 
-v_param <- 1 
-u_param <- 10	
-sample_size <- 100
-sample_name <- paste("Random Sample with N = ", sample_size, " from Weibull(u = ", u_param, ", v = ", v_param, ", w = ", w_param, ")", sep = "")
-w3samp <- rweibull3(sample_size, shape = w_param, scale = v_param, thres = u_param)
+#w_param <- 1.5 
+#v_param <- 1 
+#u_param <- 10	
+#sample_size <- 100
+#sample_name <- paste("Random Sample with N = ", sample_size, " from Weibull(u = ", u_param, ", v = ", v_param, ", w = ", w_param, ")", sep = "")
+#w3samp <- rweibull3(sample_size, shape = w_param, scale = v_param, thres = u_param)
 
-W <- get_weibull_mles(w3samp, 10e-6, 500, 5)
-MLEs <- W[[1]]
-u_and_L <- W[[2]]
+w3samp <- as.numeric(scan(file = "./weibull_data/Rockette.csv", what = character(), sep = ","))
+
+## Calculate MLEs, u-space, v-space, w-space, and L.
+calcd_weib_prods <- get_weibull_mles(w3samp, 10e-6, 100, 5)
+
+## Extract calculated products from calcd_weib_prods.
+MLEs <- calcd_weib_prods[[1]]
+u <- calcd_weib_prods[[2]]
+v <- calcd_weib_prods[[3]]
+w <- calcd_weib_prods[[4]]
+L <- calcd_weib_prods[[5]]
+
+plot_mllf_2d(u, L, "Rockette et al. data", paste("u = ", MLEs[1], ", v = ", MLEs[2], ", w = ", MLEs[3], sep = ""))
+
 print(MLEs)
-
-#jpeg(file = paste(gsub(" ", "_", sample_name), ".jpeg", sep =""))
-#plot(u_space, L, main = sample_name, xlim = c(min(u_space), max(u_space)), ylim = c(min(L), max(L)), type = "l", sub =  paste("u = ", u_space[index_of_max], ", v = ", v_vect[index_of_max], ", w = ", w_vect[index_of_max], sep = ""))
-#dev.off()
