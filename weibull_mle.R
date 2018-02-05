@@ -236,6 +236,17 @@ if (args[1] == "SGEN") {
 	plot_mllf_u(u, L, paste("Random sample from Weib(u = ", u_cmdln, ", v = ", v_cmdln, ", w = ", w_cmdln, ")",
 		                 sep = ""), paste("u = ", MLEs[1], ", v = ", MLEs[2], ", w = ", MLEs[3], sep = ""),
 		     c(min(u), max(u)), c(min(L), max(L)))
+
+	plot_mllf_v(v, L, paste("Random sample from Weib(u = ", u_cmdln, ", v = ", v_cmdln, ", w = ", w_cmdln, ")",
+		                 sep = ""), 
+			     paste("u = ", MLEs[1], ", v = ", MLEs[2], ", w = ", MLEs[3], sep = ""), 
+		     c(min(v), max(v)), c(min(L), max(L)))
+
+	plot_mllf_w(w, L, paste("Random sample from Weib(u = ", u_cmdln, ", v = ", v_cmdln, ", w = ", w_cmdln, ")",
+		                 sep = ""), 
+			     paste("u = ", MLEs[1], ", v = ", MLEs[2], ", w = ", MLEs[3], sep = ""), 
+		     c(min(w), max(w)), c(min(L), max(L)))
+
 } else {
 
 	data_files <- list.files(paste(getwd(), "/weibull_data", sep = ""))
