@@ -1,4 +1,4 @@
-###################################################################
+##################################################################
 #								  #
 # file:		weibull_mle.R					  #
 # authors:	Nolan Gagnon, Puspanjali Subudhi 		  #
@@ -178,53 +178,107 @@ get_weibull_mles <- function(data, epsilon, u_divs, NR_iters)
 	return(ret_vect)
 }
 
-plot_mllf_2d <- function(u, L, title, subtitle, x_lims, y_lims)
+plot_mllf_u <- function(u, L, title, subtitle, x_lims, y_lims)
 {
-	jpeg(file = paste("./weibull_plots/", gsub(" ", "_", title), ".jpeg", sep = ""))
-	plot(u, L, main = title, sub = subtitle, xlim = x_lims, ylim = y_lims, type = "l", lwd = 2)
+	pdf(file = paste("./weibull_plots/", gsub(" ", "_", title), "_u", ".pdf", sep = ""))
+	par(bg = 'lightgray')
+	plot(u, L, main = title, sub = subtitle, xlim = x_lims, ylim = y_lims, type = "l", lwd = 2,
+	     col = "red", col.main = "black", col.sub = "red", ylab = "Maximized log-likelihood",
+	     fg = "blue")
+	grid(col = "black")
 	dev.off()	
 }
 
-#w_param <- 1.5 
-#v_param <- 1 
-#u_param <- 10	
-#sample_size <- 100
-#sample_name <- paste("Random Sample with N = ", sample_size, " from Weibull(u = ", u_param, ", v = ", v_param, ", w = ", w_param, ")", sep = "")
-#w3samp <- rweibull3(sample_size, shape = w_param, scale = v_param, thres = u_param)
+plot_mllf_v <- function(v, L, title, subtitle, x_lims, y_lims)
+{
+	pdf(file = paste("./weibull_plots/", gsub(" ", "_", title), "_v", ".pdf", sep = ""))
+	par(bg = 'lightgray')
+	plot(v, L, main = title, sub = subtitle, xlim = x_lims, ylim = y_lims, type = "l", lwd = 2,
+	     col = "red", col.main = "black", col.sub = "red", ylab = "Maximized log-likelihood",
+	     fg = "blue")
+	grid(col = "black")
+	dev.off()	
+}
+
+plot_mllf_w <- function(w, L, title, subtitle, x_lims, y_lims)
+{
+	pdf(file = paste("./weibull_plots/", gsub(" ", "_", title), "_w", ".pdf", sep = ""))
+	par(bg = 'lightgray')
+	plot(w, L, main = title, sub = subtitle, xlim = x_lims, ylim = y_lims, type = "l", lwd = 2,
+	     col = "red", col.main = "black", col.sub = "red", ylab = "Maximized log-likelihood",
+	     fg = "blue")
+	grid(col = "black")
+	dev.off()	
+}
 
 ###################################################################
 #			   VISUALIZATION	                  #
 ###################################################################
-data_files <- list.files(paste(getwd(), "/weibull_data", sep = ""))
+args <- commandArgs(trailingOnly = TRUE)
+
+if (args[1] == "SGEN") {
+	u_cmdln <- as.numeric(args[2])
+	v_cmdln <- as.numeric(args[3])
+	w_cmdln <- as.numeric(args[4])
+	ssize_cmdln <- as.numeric(args[5])
+	udivs_cmdln <- as.numeric(args[6])
+
+	w3samp <- rweibull3(ssize_cmdln, shape = w_cmdln, scale = v_cmdln, thres = u_cmdln)
 	
-for (file in data_files) {
+	calcd_weib_prods <- get_weibull_mles(w3samp, 10e-6, udivs_cmdln, 5)	
 
-	w3samp <- as.numeric(scan(file = paste(getwd(), "/weibull_data/", file, sep = ""), what = character(), sep = ","))
-
-	## Calculate MLEs, u-space, v-space, w-space, and L.
-	calcd_weib_prods <- get_weibull_mles(w3samp, 10e-6, 100, 5)
-
-	## Extract calculated products from calcd_weib_prods.
 	MLEs <- calcd_weib_prods[[1]]
 	u <- calcd_weib_prods[[2]]
 	v <- calcd_weib_prods[[3]]
 	w <- calcd_weib_prods[[4]]
 	L <- calcd_weib_prods[[5]]
-	
-	if (file == "Rockette.csv") {
-		x_lims <- c(0, 3)
-		y_lims <- c(-6.84, -6.79)
-	} else if (file == "PA.csv") {
-		x_lims <- c(0, 12)
-		y_lims <- c(-73.5, -71.5)
-	} else if (file == "AC.csv") {
-		x_lims <- c(0, 10)
-		y_lims <- c(-12, -8)
-	} else {
-		x_lims <- c(0, 0.6)
-		y_lims <- c(-24, -14)
+
+	plot_mllf_u(u, L, paste("Random sample from Weib(u = ", u_cmdln, ", v = ", v_cmdln, ", w = ", w_cmdln, ")",
+		                 sep = ""), paste("u = ", MLEs[1], ", v = ", MLEs[2], ", w = ", MLEs[3], sep = ""),
+		     c(min(u), max(u)), c(min(L), max(L)))
+} else {
+
+	data_files <- list.files(paste(getwd(), "/weibull_data", sep = ""))
+		
+	for (file in data_files) {
+
+		w3samp <- as.numeric(scan(file = paste(getwd(), "/weibull_data/", file, sep = ""), 
+					  what = character(), sep = ","))
+
+		## Calculate MLEs, u-space, v-space, w-space, and L.
+		calcd_weib_prods <- get_weibull_mles(w3samp, 10e-6, 100, 5)
+
+		## Extract calculated products from calcd_weib_prods.
+		MLEs <- calcd_weib_prods[[1]]
+		u <- calcd_weib_prods[[2]]
+		v <- calcd_weib_prods[[3]]
+		w <- calcd_weib_prods[[4]]
+		L <- calcd_weib_prods[[5]]
+		
+		if (file == "Rockette.csv") {
+			x_lims <- c(0, 3)
+			y_lims <- c(-6.84, -6.79)
+		} else if (file == "PA.csv") {
+			x_lims <- c(0, 12)
+			y_lims <- c(-73.5, -71.5)
+		} else if (file == "AC.csv") {
+			x_lims <- c(0, 10)
+			y_lims <- c(-12, -8)
+		} else {
+			x_lims <- c(0, 0.6)
+			y_lims <- c(-24, -14)
+		}
+
+		plot_mllf_u(u, L, gsub(".csv", " Data", file), 
+			     paste("u = ", MLEs[1], ", v = ", MLEs[2], ", w = ", MLEs[3], sep = ""), 
+			     x_lims, y_lims)
+
+		plot_mllf_v(v, L, gsub(".csv", " Data", file), 
+			     paste("u = ", MLEs[1], ", v = ", MLEs[2], ", w = ", MLEs[3], sep = ""), 
+			     c(min(v), max(v)), c(min(L), max(L)))
+
+		plot_mllf_w(w, L, gsub(".csv", " Data", file), 
+			     paste("u = ", MLEs[1], ", v = ", MLEs[2], ", w = ", MLEs[3], sep = ""), 
+			     c(min(w), max(w)), c(min(L), max(L)))
 	}
-	plot_mllf_2d(u, L, gsub(".csv", " Data", file), 
-		     paste("u = ", MLEs[1], ", v = ", MLEs[2], ", w = ", MLEs[3], sep = ""), 
-		     x_lims, y_lims)
 }
