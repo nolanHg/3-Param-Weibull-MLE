@@ -1,32 +1,78 @@
-library(FAdist)
+###################################################################
+#								  #
+# file:		weibull_mle.R					  #
+# authors:	Nolan Gagnon, Puspanjali Subudhi 		  #
+# version:	V1.0						  #
+# date:		02/04/2018					  #
+#								  #
+# brief:	Calculates the maximum likelihood estimates       #
+#		for the parameters of a three-parameter           #
+#		Weibull distribution using the method described   #
+#		in Panchang and Gupta (1989).			  #
+#								  #
+###################################################################
 
-options(digits = 10)
 
+###################################################################
+#			   IMPORTS		                  #
+###################################################################
+library(FAdist) # Provides access to the rweibull3() function
+
+
+###################################################################
+#			   R OPTIONS				  #
+###################################################################
+options(digits = 5) # Display numbers with 5 digits
+
+
+###################################################################
+#			   FUNCTIONS				  #
+###################################################################
+
+##
+## brief: Compute the next estimate for the shape parameter using Newton-Raphson.
+## param y: Modified Weibull sample x_j - u_i.
+## param prev_w: Previous estimate for the shape parameter.
+## returns: Next estimate for the shape parameter.
+##
 get_next_w <- function(y, prev_w) 
 {
+	
 	S1 <- sum(log(y)) 
-
 	S2 <- sum(y ^ prev_w) 
 	S3 <- sum((y ^ prev_w) * log(y)) 
 	S4 <- sum(((log(y))^2) * (y^prev_w)) 
-
+	
+	## Next Newton-Raphson estimate; found using equation 2.1 in Panchang and Gupta (1989)
+	## For reference:  Next Newton-Raphson estimate is x_(n+1) = x_n - f(x_n) / f'(x_n).
 	next_w <- prev_w + ((1 / prev_w) + (S1 / length(y)) - (S3 / S2)) / ((1 / (prev_w^2)) + S4 / S2 - (S3 / S2)^2)
 	return(next_w)	
 }
 
+##
+## brief: Compute the maximized log-likelihood function using u_i, v_i, w_i,
+##	   found using the method described in Panchang and Gupta (1989).
+## param v: Scale parameter.
+## param w: Shape parameter.
+## param y: Modified Weibull sample x_j - u_i
+## returns: L(u_i, v_i, w_i), i.e., the maximized log-likelihood function for u_i, v_i, w_i.
+##
 max_log_likelihood <- function(v, w, y) 
 {
 	S <- sum(log(y)) 
-
 	L <- length(y) * (log(w / v) - 1) + (w - 1) * S
-
 	return(L)
 }	
 
+##
+## brief: Compute the maximized log-likelihood function using u_i = x_min,
+##	  v_i = (1 / N) * SUMMATION(x_j - x_min), w_i = 1.
+## param v: Scale parameter with value equal to v_i, mentioned in the brief.
+## param n: Sample size.
+##
 max_log_likelihood_alt <- function(v, n)
 {
 	L <- n * (-log(v) - 1)
-
 	return(L)
 }
 
@@ -38,20 +84,20 @@ epsilon <- 10e-6
 
 ## Generate a random sample of size N from Weibull(u = 50, v = 3, w = 2)
 ## x_j sample
-w_param <- 2.3
-v_param <- 3
-u_param <- 2.8	
-sample_size <- 40
-#sample_name <- paste("Random Sample with N = ", sample_size, " from Weibull(u = ", u_param, ", v = ", v_param, ", w = ", w_param, ")", sep = "")
-#w3samp <- rweibull3(sample_size, shape = w_param, scale = v_param, thres = u_param)
+w_param <- 1.5 
+v_param <- 1 
+u_param <- 10	
+sample_size <- 100
+sample_name <- paste("Random Sample with N = ", sample_size, " from Weibull(u = ", u_param, ", v = ", v_param, ", w = ", w_param, ")", sep = "")
+w3samp <- rweibull3(sample_size, shape = w_param, scale = v_param, thres = u_param)
 
 ## Sample from Adatia and Chan (1985)
 #sample_name <- "Adatia and Chan (1985)"
 #w3samp <- c(10.0805, 10.0990, 10.2757, 10.6545, 10.6883, 11.0666, 11.2083, 11.2558, 11.8761, 12.2103)
 
 ## Sample from Rockette et al. (1974)
-sample_name <- "Rockette et al. (1974)"
-w3samp <- c(3.1, 4.6, 5.6, 6.8)
+#sample_name <- "Rockette et al. (1974)"
+#w3samp <- c(3.1, 4.6, 5.6, 6.8)
 
 ## Sample from Petruaskas and Aagaard (1971)
 #sample_name <- "Petruaskas and Aagaard (1972)"
@@ -120,5 +166,5 @@ index_of_max <- which(L == max(L))
 paste("u =", u_space[index_of_max], "v =", v_vect[index_of_max], "w =", w_vect[index_of_max], sep = " ")
 
 jpeg(file = paste(gsub(" ", "_", sample_name), ".jpeg", sep =""))
-plot(u_space, L, main = sample_name, xlim = c(min(u_space), max(u_space)), ylim = c(min(L), max(L)), type = "l", sub =  paste("u = ", u_space[index_of_max], ", v = ", v_vect[index_of_max], ", w = ", w_vect[index_of_max], sept = ""))
+plot(u_space, L, main = sample_name, xlim = c(min(u_space), max(u_space)), ylim = c(min(L), max(L)), type = "l", sub =  paste("u = ", u_space[index_of_max], ", v = ", v_vect[index_of_max], ", w = ", w_vect[index_of_max], sep = ""))
 dev.off()
