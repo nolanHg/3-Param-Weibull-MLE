@@ -18,6 +18,7 @@
 ###################################################################
 library(FAdist) # Provides access to the rweibull3() function.
 
+
 ###################################################################
 #			   R OPTIONS				  #
 ###################################################################
@@ -222,30 +223,51 @@ if (args[1] == "SGEN") {
 	w_cmdln <- as.numeric(args[4])
 	ssize_cmdln <- as.numeric(args[5])
 	udivs_cmdln <- as.numeric(args[6])
-
-	w3samp <- rweibull3(ssize_cmdln, shape = w_cmdln, scale = v_cmdln, thres = u_cmdln)
+	iters_cmdln <- as.numeric(args[7])
+	u_sum <- 0	
+	v_sum <- 0
+	w_sum <- 0
+		
+	for (i in 1 : iters_cmdln) {
+		w3samp <- rweibull3(ssize_cmdln, shape = w_cmdln, scale = v_cmdln ^ (1 / w_cmdln), thres = u_cmdln)
+		
+		calcd_weib_prods <- get_weibull_mles(w3samp, 10e-6, udivs_cmdln, 5)	
+		
+		MLEs <- calcd_weib_prods[[1]]
+		u <- calcd_weib_prods[[2]]
+		w <- calcd_weib_prods[[4]]
+		v <- calcd_weib_prods[[3]]
+		L <- calcd_weib_prods[[5]]
 	
-	calcd_weib_prods <- get_weibull_mles(w3samp, 10e-6, udivs_cmdln, 5)	
+		u_sum <- u_sum + MLEs[1]
+		v_sum <- v_sum + MLEs[2]
+		w_sum <- w_sum + MLEs[3]
+	}
+	
+	u_avg <- u_sum / iters_cmdln
+	v_avg <- v_sum / iters_cmdln
+	w_avg <- w_sum / iters_cmdln
+	
+	print(paste("AVG u = ", u_avg, ", AVG v = ", v_avg, ", AVG w = ", w_avg, sep = ""))
+		
+	if (args[8] != "GSUPP") {
 
-	MLEs <- calcd_weib_prods[[1]]
-	u <- calcd_weib_prods[[2]]
-	v <- calcd_weib_prods[[3]]
-	w <- calcd_weib_prods[[4]]
-	L <- calcd_weib_prods[[5]]
+		plot_mllf_u(u, L, paste("Random sample from Weib(u = ", u_cmdln, ", v = ", v_cmdln, ", w = ", w_cmdln, ")",
+					 sep = ""), paste("u = ", MLEs[1], ", v = ", MLEs[2], ", w = ", MLEs[3], sep = ""),
+			     c(min(u), max(u)), c(min(L), max(L)))
 
-	plot_mllf_u(u, L, paste("Random sample from Weib(u = ", u_cmdln, ", v = ", v_cmdln, ", w = ", w_cmdln, ")",
-		                 sep = ""), paste("u = ", MLEs[1], ", v = ", MLEs[2], ", w = ", MLEs[3], sep = ""),
-		     c(min(u), max(u)), c(min(L), max(L)))
+		plot_mllf_v(v, L, paste("Random sample from Weib(u = ", u_cmdln, ", v = ", v_cmdln, ", w = ", w_cmdln, ")",
+					 sep = ""), 
+				     paste("u = ", MLEs[1], ", v = ", MLEs[2], ", w = ", MLEs[3], sep = ""), 
+			     c(min(v), max(v)), c(min(L), max(L)))
 
-	plot_mllf_v(v, L, paste("Random sample from Weib(u = ", u_cmdln, ", v = ", v_cmdln, ", w = ", w_cmdln, ")",
-		                 sep = ""), 
-			     paste("u = ", MLEs[1], ", v = ", MLEs[2], ", w = ", MLEs[3], sep = ""), 
-		     c(min(v), max(v)), c(min(L), max(L)))
-
-	plot_mllf_w(w, L, paste("Random sample from Weib(u = ", u_cmdln, ", v = ", v_cmdln, ", w = ", w_cmdln, ")",
-		                 sep = ""), 
-			     paste("u = ", MLEs[1], ", v = ", MLEs[2], ", w = ", MLEs[3], sep = ""), 
-		     c(min(w), max(w)), c(min(L), max(L)))
+		plot_mllf_w(w, L, paste("Random sample from Weib(u = ", u_cmdln, ", v = ", v_cmdln, ", w = ", w_cmdln, ")",
+					 sep = ""), 
+				     paste("u = ", MLEs[1], ", v = ", MLEs[2], ", w = ", MLEs[3], sep = ""), 
+			     c(min(w), max(w)), c(min(L), max(L)))
+	} else {
+	#	print(paste("MLEs: u = ", MLEs[1], ", v = ", MLEs[2], ", w = ", MLEs[3], sep = ""))	
+	}
 
 } else {
 
